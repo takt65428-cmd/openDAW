@@ -1,4 +1,5 @@
-import {EmptyExec, isInstanceOf, RuntimeNotifier, Selection, Terminable} from "@opendaw/lib-std"
+// TAKT-FORK: `RuntimeNotifier` wurde nur vom entfernten „Detect BPM (AI)" gebraucht.
+import {EmptyExec, isInstanceOf, Selection, Terminable} from "@opendaw/lib-std"
 import {
     AudioConsolidation,
     AudioContentModifier,
@@ -22,7 +23,8 @@ import {Dialogs} from "@/ui/components/dialogs.tsx"
 import {StudioService} from "@/service/StudioService"
 import {Promises} from "@opendaw/lib-runtime"
 import {RegionsShortcuts} from "@/ui/shortcuts/RegionsShortcuts"
-import {TempoDetection} from "@/service/TempoDetection"
+// TAKT-FORK: `TempoDetection` ist mit dem KI-Menueeintrag entfallen — und damit die einzige
+// verbliebene Kette zur ONNX-Laufzeit.
 
 type Construct = {
     element: Element
@@ -192,17 +194,11 @@ export const installRegionContextMenu =
                         })
                     }
                 }),
-                MenuItem.default({
-                    label: "Detect BPM (AI)...",
-                    hidden: region.type !== "audio-region" || !Browser.isLocalHost()
-                }).setTriggerProcedure(() => {
-                    if (region.type === "audio-region") {
-                        region.file.data.ifSome(async data => {
-                            const bpm = await TempoDetection.runOne(data.frames[0], data.sampleRate, region.label)
-                            await RuntimeNotifier.info({headline: region.label, message: `${bpm} bpm`})
-                        })
-                    }
-                }),
+                // TAKT-FORK: „Detect BPM (AI)..." ist entfernt. Der Eintrag war ohnehin nur auf
+                // localhost sichtbar (`!Browser.isLocalHost()`), zog aber ueber TempoDetection →
+                // InferenceLoader die ONNX-Laufzeit in den Build: 25,6 MB fuer einen Knopf, den
+                // im Betrieb niemand zu sehen bekommt. Die Erkennung ohne KI („BPMTools",
+                // direkt darueber) bleibt.
                 DebugMenus.debugBox(region.box)
             )
         })

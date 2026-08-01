@@ -24,7 +24,7 @@ import {TestPage} from "@/ui/pages/TestPage"
 import {JoinRoomPage} from "@/ui/pages/JoinRoomPage"
 import {PerformancePage} from "@/ui/pages/PerformancePage"
 import {SampleReadPage} from "@/ui/pages/SampleReadPage"
-import {SpikeTestPage} from "@/ui/pages/SpikeTestPage"
+// TAKT-FORK: `SpikeTestPage` ist mit der Route entfallen.
 import {OpenAudioPage} from "@/takt/OpenAudioPage"
 
 export const App = (service: StudioService) => {
@@ -77,7 +77,10 @@ export const App = (service: StudioService) => {
                     {path: "/test", factory: TestPage},
                     {path: "/performance", factory: PerformancePage},
                     {path: "/performance/sample-read", factory: SampleReadPage},
-                    {path: "/spike-test", factory: SpikeTestPage},
+                    // TAKT-FORK: /spike-test ist entfernt — eine Entwicklerseite, die KI-Modelle
+                    // von assets.opendaw.studio zieht (htdemucs). Hier steht ein normaler
+                    // Kommentar und KEIN {/* … */}: das ist ein Array-Literal, dort waere die
+                    // JSX-Schreibweise ein leeres Objekt — also eine Route ohne Pfad.
                     {path: "/join/*", factory: JoinRoomPage}
                 ]}
             />

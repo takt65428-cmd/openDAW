@@ -9,7 +9,7 @@ import {GlobalShortcuts} from "@/ui/shortcuts/GlobalShortcuts"
 import {VideoRenderer} from "@/video/VideoRenderer"
 import {createDebugMenu} from "@/service/DebugMenu"
 import {connectRoom} from "@/service/StudioLiveRoomConnect"
-import {AiDemux} from "@/service/AiDemux.tsx"
+// TAKT-FORK: `AiDemux` ist mit dem Menueeintrag entfallen.
 import {NextcloudDialogs} from "@/project/NextcloudDialogs"
 
 export const populateStudioMenu = (service: StudioService) => {
@@ -50,8 +50,10 @@ export const populateStudioMenu = (service: StudioService) => {
                                 .setTriggerProcedure(() => service.sampleService.browse(true)),
                             MenuItem.default({label: "Stems (Zip)..."})
                                 .setTriggerProcedure(() => service.importStems()),
-                            MenuItem.default({label: "AI Demux..."})
-                                .setTriggerProcedure(() => AiDemux.run(service).catch(EmptyExec)),
+                            // TAKT-FORK: „AI Demux..." (Stem-Trennung) ist entfernt. Sie laedt ihre
+                            // Modelle von opendaw.studio — die Netzsperre weist das ab, der Eintrag
+                            // waere also ein Knopf, der nichts tut. Nebenbei faellt damit die
+                            // ONNX-Laufzeit aus dem Build (2 x 25,6 MB, sie lag doppelt da).
                             MenuItem.default({label: "Soundfont Files..."})
                                 .setTriggerProcedure(() => service.soundfontService.browse(true)),
                             MenuItem.default({label: "Project Bundle..."})
