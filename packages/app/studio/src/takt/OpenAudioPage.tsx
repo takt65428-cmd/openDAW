@@ -1,20 +1,22 @@
-// TAKT-FORK — Route /open-audio?src=…&beat=…&offsetMs=…
+// TAKT-FORK — Route /open-audio?spuren=[…]
 //
 // Der eigentliche Zweck des ganzen Bausteins: Aus Artist OS heraus („Im Studio oeffnen") landet
-// der Nutzer hier, und das Studio steht mit seiner Aufnahme und dem passenden Beat bereit.
+// der Nutzer hier, und das Studio steht mit seiner Aufnahme, dem passenden Beat und allen
+// Nebenspuren bereit.
 //
-// ⚖️ ZWEI Dateien sind der Normalfall, nicht eine. Seit dem 31.07. nimmt Artist OS im
-// Kopfhoerer-Weg NUR die Stimme auf; der Beat liegt getrennt daneben. Genau deshalb ist der
-// Sprung ins Mehrspur-Studio ueberhaupt sinnvoll — mit einer fertig gemischten Datei gaebe es
-// hier nichts zu tun.
+// ⚖️ MEHRERE Dateien sind der Normalfall, nicht eine. Seit dem 31.07. nimmt Artist OS im
+// Kopfhoerer-Weg NUR die Stimme auf; der Beat liegt getrennt daneben, Doubles und Adlibs
+// ebenso. Genau deshalb ist der Sprung ins Mehrspur-Studio ueberhaupt sinnvoll — mit einer
+// fertig gemischten Datei gaebe es hier nichts zu tun.
+//
+// ⚠️ Die AUSRICHTUNG wird hier nicht gerechnet. Jede Spur bringt ihre Startposition mit, weil die
+// Zeitrechnung in Artist OS steht (lib/audio/mixplan.ts und lib/audio/dawUebergabe.ts) und dort
+// geprueft ist. Sie hier ein zweites Mal herzuleiten hiesse, zwei Wahrheiten zu pflegen.
 //
 // Aufbau nach der Vorlage des Stems-Imports (service/StudioService.ts, importStems) und
 // ui/pages/OpenBundlePage.tsx:
 //   1. neues Projekt (sonst gibt es kein boxGraph, in das die Spuren gehoeren)
 //   2. je Datei: importFile -> AudioFileBox -> Tape-Spur -> Region
-//
-// Der Beat liegt bei 0, die Stimme bei offsetMs. Der Versatz kommt als ZAHL aus der App, wo ihn
-// der Nutzer an einem Regler eingestellt hat — er wird hier NICHT neu geschaetzt.
 import {createElement, PageContext, PageFactory} from "@opendaw/lib-jsx"
 import {StudioService} from "@/service/StudioService.ts"
 import {Promises} from "@opendaw/lib-runtime"
@@ -22,17 +24,14 @@ import {RuntimeNotifier, UUID} from "@opendaw/lib-std"
 import {AudioContentFactory} from "@opendaw/studio-core"
 import {InstrumentFactories} from "@opendaw/studio-adapters"
 import {AudioFileBox} from "@opendaw/studio-boxes"
-import {leseOpenAudioParameter} from "./openAudioParams"
+import {DawSpur, leseOpenAudioParameter} from "./openAudioParams"
 
-interface Geladen {
-    name: string
+interface Geladen extends DawSpur {
     arrayBuffer: ArrayBuffer
-    /** Startposition in Sekunden. Der Beat liegt bei 0, die Stimme um ihren Versatz spaeter. */
-    startSekunden: number
 }
 
-async function hole(url: string, name: string): Promise<Geladen | null> {
-    const {status, value} = await Promises.tryCatch(fetch(url).then(r => {
+async function hole(spur: DawSpur): Promise<Geladen | null> {
+    const {status, value} = await Promises.tryCatch(fetch(spur.url).then(r => {
         // ⚠️ `response.ok` MUSS geprueft werden. Die Bruecke antwortet mit 401 (Link abgelaufen),
         // 403 (falsche Herkunft), 404 (Aufnahme geloescht) oder 409 (verschluesselt) — und in
         // JEDEM dieser Faelle ist `r.arrayBuffer()` ein kurzer Textkoerper, den der Decoder
@@ -42,7 +41,7 @@ async function hole(url: string, name: string): Promise<Geladen | null> {
         return r.arrayBuffer()
     }))
     if (status === "rejected") {return null}
-    return {name, arrayBuffer: value, startSekunden: 0}
+    return {...spur, arrayBuffer: value}
 }
 
 export const OpenAudioPage: PageFactory<StudioService> = ({service}: PageContext<StudioService>) => {
@@ -57,15 +56,12 @@ export const OpenAudioPage: PageFactory<StudioService> = ({service}: PageContext
             if (!gelesen.ok) {
                 return RuntimeNotifier.info({headline: "Aufnahme konnte nicht geoeffnet werden", message: gelesen.meldung})
             }
-            const {stimme, beat, offsetMs} = gelesen.auftrag
 
             const dialog = RuntimeNotifier.progress({headline: "Aufnahme wird geladen..."})
-            // Beide Dateien parallel — sie sind unabhaengig, und auf dem Handy zaehlt jede Sekunde.
-            const [stimmDatei, beatDatei] = await Promise.all([
-                hole(stimme, "Stimme"),
-                beat === null ? Promise.resolve(null) : hole(beat, "Beat"),
-            ])
-            if (stimmDatei === null) {
+            // Alle Dateien parallel — sie sind unabhaengig, und auf dem Handy zaehlt jede Sekunde.
+            const geladen = await Promise.all(gelesen.spuren.map(hole))
+            const brauchbar = geladen.filter((g): g is Geladen => g !== null)
+            if (brauchbar.length === 0) {
                 dialog.terminate()
                 return RuntimeNotifier.info({
                     headline: "Aufnahme nicht abrufbar",
@@ -73,16 +69,13 @@ export const OpenAudioPage: PageFactory<StudioService> = ({service}: PageContext
                         + "Bitte in Artist OS erneut auf „Im Studio oeffnen\" tippen.",
                 })
             }
-            // ⚠️ Ein fehlender Beat bricht NICHT ab. Die Stimme ist die Arbeit des Nutzers; sie
-            // deshalb nicht zu oeffnen waere die schlechtere Antwort. Der Hinweis kommt am Ende.
-            stimmDatei.startSekunden = offsetMs / 1000
 
             await service.newProject()
-            const {editing, boxGraph, api} = service.project
+            const {editing, boxGraph, api, tempoMap} = service.project
 
-            // Beat zuerst, damit er im Studio die obere Spur ist — darunter singt man.
-            const spuren = [beatDatei, stimmDatei].filter((d): d is Geladen => d !== null)
-            for (const datei of spuren) {
+            // ⚠️ Reihenfolge wie uebergeben. Artist OS schickt den Beat zuerst, damit er im Studio
+            // die obere Spur ist — darunter singt man.
+            for (const datei of brauchbar) {
                 meldung.textContent = `${datei.name} wird eingefuegt...`
                 const {status, value: sample} = await Promises.tryCatch(
                     service.sampleService.importFile({name: datei.name, arrayBuffer: datei.arrayBuffer}))
@@ -101,17 +94,25 @@ export const OpenAudioPage: PageFactory<StudioService> = ({service}: PageContext
                         }))
                     AudioContentFactory.createNotStretchedRegion({
                         boxGraph, sample, audioFileBox,
-                        position: datei.startSekunden,
+                        // ⚠️ `position` ist PPQN (Pulses zu 960 je Viertel), NICHT Sekunden — der
+                        // Typ heisst `ppqn`, und alle Aufrufer im Bestand uebergeben nur 0, wo
+                        // beide Einheiten gleich aussehen. Mit Sekunden laege eine Spur bei 7,88
+                        // Pulses statt bei 7,88 Sekunden, also praktisch bei null: die Spuren
+                        // saehen ausgerichtet aus und waeren es nicht.
+                        position: tempoMap.secondsToPPQN(datei.startMs / 1000),
                         targetTrack: trackBox,
                     })
                 })
             }
             dialog.terminate()
 
-            if (beat !== null && beatDatei === null) {
+            // ⚠️ Ein Ausfall bricht NICHT ab. Was geladen wurde, ist die Arbeit des Nutzers; sie
+            // wegen einer fehlenden Nebenspur gar nicht zu oeffnen waere die schlechtere Antwort.
+            const fehlend = gelesen.spuren.length - brauchbar.length
+            if (fehlend > 0) {
                 RuntimeNotifier.info({
-                    headline: "Beat fehlt",
-                    message: "Die Stimme wurde geladen, der Beat nicht. Er laesst sich im Studio "
+                    headline: fehlend === 1 ? "Eine Spur fehlt" : `${fehlend} Spuren fehlen`,
+                    message: "Der Rest wurde geladen. Die fehlenden Dateien lassen sich im Studio "
                         + "von Hand hinzufuegen.",
                 }).finally()
             }
