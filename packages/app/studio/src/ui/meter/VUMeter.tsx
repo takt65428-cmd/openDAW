@@ -18,8 +18,16 @@ export namespace VUMeter {
 
     type Construct = { design: Design, model: ObservableValue<unitValue> }
 
-    const getGoogleFontUrl = (fontFamily: string, fontWeight: number) =>
-        `url("https://fonts.googleapis.com/css?family=${fontFamily.replace(" ", "+")}:${fontWeight}")`
+    // TAKT-FORK: `getGoogleFontUrl` ist entfernt.
+    //
+    // ⚠️ Beim Durchsuchen des fertigen Builds nach Fremdadressen aufgefallen — NICHT beim
+    // Booten: das VU-Meter ist ein Geraet, das man erst einfuegen muss. Genau dann haette
+    // sein `<style>@import url(fonts.googleapis.com/...)</style>` eine Anfrage an Google
+    // ausgeloest, mit der IP des Nutzers. Die Netzsperre greift dort nicht: ein `@import`
+    // im Stylesheet laeuft nicht ueber `fetch`.
+    //
+    // Die Schrift ist reine Zier fuer die Beschriftung des Zeigerinstruments; ohne sie nimmt
+    // der Browser die naechstbeste aus `font-family`.
 
     export const Element = ({
                                 design:
@@ -48,8 +56,11 @@ export namespace VUMeter {
                 style={{backgroundColor}}
                 text-anchor="middle"
                 alignment-baseline="central"
-                font-family={fontFamily}>
-                <style>{`@import ${(getGoogleFontUrl(fontFamily, fontWeight))};`}</style>
+                font-family={fontFamily}
+                // TAKT-FORK: `fontWeight` gab es vorher nur an die Google-Schrift weiter. Als
+                // SVG-Attribut bleibt die Absicht erhalten — die Beschriftung wird auch mit der
+                // oertlichen Schrift so fett wie gedacht.
+                font-weight={fontWeight}>
                 {background}
                 <g style={{filter: "drop-shadow(0px 8px 3px rgba(0, 0, 0, 0.3))"}}>{needle}</g>
             </svg>

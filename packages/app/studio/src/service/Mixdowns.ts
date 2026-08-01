@@ -1,17 +1,11 @@
 import {assert, DefaultObservableValue, Errors, Option, panic, RuntimeNotifier} from "@opendaw/lib-std"
 import {AudioData, WavFile} from "@opendaw/lib-dsp"
-import {
-    ExternalLib,
-    FFmpegConverter,
-    FFmpegWorker,
-    OfflineEngineRenderer,
-    ProjectMeta,
-    ProjectProfile
-} from "@opendaw/studio-core"
+// TAKT-FORK: `FFmpegConverter`, `FFmpegWorker` und `Dialogs` sind mit der Formatabfrage
+// entfallen — es gibt nur noch WAV, und das rechnet `WavFile.encodeFloats` lokal.
+import {ExternalLib, OfflineEngineRenderer, ProjectMeta, ProjectProfile} from "@opendaw/studio-core"
 import {Files} from "@opendaw/lib-dom"
 import {Promises} from "@opendaw/lib-runtime"
 import {ExportConfiguration} from "@opendaw/studio-adapters"
-import {Dialogs} from "@/ui/components/dialogs"
 
 export namespace Mixdowns {
     export const exportMixdown = async ({project: source, meta}: ProjectProfile): Promise<void> => {
@@ -33,35 +27,20 @@ export namespace Mixdowns {
             return
         }
         const audioData: AudioData = result.value
-        const {resolve, reject, promise} = Promise.withResolvers<void>()
-        const {status, error} = await Promises.tryCatch(Dialogs.show({
-            headline: "Encode Mixdown",
-            content: "openDAW will download FFmpeg (30MB) once to encode your mixdown unless you choose 'Wav'.",
-            excludeOk: true,
-            buttons: [
-                {
-                    text: "Mp3", onClick: handler => {
-                        handler.close()
-                        saveMp3File(audioData, meta).then(resolve, reject)
-                    }, primary: false
-                }, {
-                    text: "Flac", onClick: handler => {
-                        handler.close()
-                        saveFlacFile(audioData, meta).then(resolve, reject)
-                    }, primary: false
-                }, {
-                    text: "Wav", onClick: handler => {
-                        handler.close()
-                        saveWavFile(audioData, meta).then(resolve, reject)
-                    }, primary: true
-                }
-            ]
-        }))
-        if (status === "rejected" && !Errors.isAbort(error)) {
-            reject(error)
-            return
-        }
-        return promise
+        // TAKT-FORK: Direkt als WAV, ohne Formatabfrage.
+        //
+        // ⚠️ Der Grund ist kein Bedienkomfort, sondern ein LOCH: „Mp3" und „Flac" luden den
+        // FFmpeg-Kern zur Laufzeit von `package.opendaw.studio` nach — und das geschieht in
+        // einem WORKER, wo die Netzsperre nicht greift (sie gilt nur fuer den Haupt-Thread).
+        // Nach dem Ausbau der Zaehler und Kataloge war das der einzige verbliebene Weg, auf dem
+        // tatsaechlich noch eine Anfrage nach draussen gegangen waere.
+        //
+        // ⚖️ Den Kern selbst mitzuliefern waere die andere Loesung gewesen — @ffmpeg/core wiegt
+        // aber 64 MB, und „WAV nur beim Export" ist ohnehin die getroffene Entscheidung.
+        // `WavFile.encodeFloats` rechnet lokal, ohne jede Nachladerei.
+        //
+        // Der Stem-Export (exportStems, weiter unten) war nie betroffen: er packt eine Zip.
+        return saveWavFile(audioData, meta)
     }
 
     export const exportStems = async ({project: source, meta}: ProjectProfile,
@@ -100,46 +79,9 @@ export namespace Mixdowns {
         })
     }
 
-    const saveMp3File = async (audioData: AudioData, meta: ProjectMeta) => {
-        const ffmpeg = await loadFFmepg()
-        return encodeAndSaveFile({
-            converter: ffmpeg.mp3Converter(),
-            fileExtension: "mp3",
-            fileType: "Mp3",
-            fileName: meta.name,
-            audioData
-        })
-    }
-
-    const saveFlacFile = async (audioData: AudioData, meta: ProjectMeta) => {
-        const ffmpeg = await loadFFmepg()
-        return encodeAndSaveFile({
-            converter: ffmpeg.flacConverter(),
-            fileExtension: "flac",
-            fileType: "Flac",
-            fileName: meta.name,
-            audioData
-        })
-    }
-
-    const encodeAndSaveFile = async ({audioData, converter, fileType, fileExtension, fileName}: {
-        audioData: AudioData,
-        converter: FFmpegConverter<unknown>,
-        fileType: string,
-        fileExtension: string,
-        fileName: string
-    }) => {
-        const progress = new DefaultObservableValue(0.0)
-        const progressDialog = RuntimeNotifier.progress({headline: `Encoding ${fileType}...`, progress})
-        const flac = await converter.convert(new Blob([WavFile.encodeFloats(audioData)]),
-            value => progress.setValue(value))
-        progressDialog.terminate()
-        return saveFileAfterAsync({
-            buffer: flac,
-            headline: `Save ${fileType}`,
-            suggestedName: `${fileName}.${fileExtension}`
-        })
-    }
+    // TAKT-FORK: `saveMp3File` und `saveFlacFile` sind entfernt — sie waren die einzigen
+    // Aufrufer von `loadFFmepg`. Damit gibt es keinen Weg mehr, auf dem der FFmpeg-Kern von
+    // einem fremden Server nachgeladen wird.
 
     const saveZipFile = async (audioData: AudioData, meta: ProjectMeta, trackNames: ReadonlyArray<string>) => {
         const libResult = await ExternalLib.JSZip()
@@ -183,20 +125,9 @@ export namespace Mixdowns {
         })
     }
 
-    const loadFFmepg = async (): Promise<FFmpegWorker> => {
-        const {FFmpegWorker} = await Promises.guardedRetry(() =>
-            import("@opendaw/studio-core/FFmpegWorker"), (_, count) => count < 60)
-        const progress = new DefaultObservableValue(0.0)
-        const progressDialog = RuntimeNotifier.progress({headline: "Loading FFmpeg...", progress})
-        const {status, value, error} = await Promises.tryCatch(FFmpegWorker.load(value => progress.setValue(value)))
-        progressDialog.terminate()
-        if (status === "rejected") {
-            console.warn(error)
-            RuntimeNotifier.notify({message: "Could not load FFmpeg.", icon: "Warning"})
-            throw error
-        }
-        return value
-    }
+    // TAKT-FORK: `loadFFmepg` und `encodeAndSaveFile` sind entfallen. Der Import
+    // `@opendaw/studio-core/FFmpegWorker` war die Stelle, an der der Kern von
+    // `package.opendaw.studio` geholt wurde — im Worker, an der Netzsperre vorbei.
 
     // browsers need a user-input to allow download
     const saveFileAfterAsync = async ({buffer, headline, message, suggestedName}: {
