@@ -25,6 +25,7 @@ import {JoinRoomPage} from "@/ui/pages/JoinRoomPage"
 import {PerformancePage} from "@/ui/pages/PerformancePage"
 import {SampleReadPage} from "@/ui/pages/SampleReadPage"
 import {SpikeTestPage} from "@/ui/pages/SpikeTestPage"
+import {OpenAudioPage} from "@/takt/OpenAudioPage"
 
 export const App = (service: StudioService) => {
     const terminator = new Terminator()
@@ -69,6 +70,10 @@ export const App = (service: StudioService) => {
                         }
                     },
                     {path: "/open-bundle/*", factory: OpenBundlePage},
+                    // TAKT-FORK: Einstieg aus Artist OS. Die Parameter stehen in der QUERY, nicht
+                    // im Pfad — sie enthalten vollstaendige URLs mit eigenen Query-Teilen, die in
+                    // einem Pfadsegment nur verstuemmelt ankaemen.
+                    {path: "/open-audio", factory: OpenAudioPage},
                     {path: "/test", factory: TestPage},
                     {path: "/performance", factory: PerformancePage},
                     {path: "/performance/sample-read", factory: SampleReadPage},
