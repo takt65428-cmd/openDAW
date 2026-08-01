@@ -80,7 +80,10 @@ export const Header = ({lifecycle, service}: Construct) => {
         <header className={className}>
             <MenuButton root={service.menu}
                         appearance={{color: Colors.gray, activeColor: Colors.bright, tinyTriangle: true}}>
-                <h5>openDAW</h5>
+                {/* TAKT-FORK: Die Fassung heisst nicht mehr openDAW. Den Namen weiterzufuehren
+                    waere irrefuehrend — sie ist veraendert und wird von jemand anderem
+                    betrieben. Woher sie stammt, steht im Impressum. */}
+                <h5>Takt Studio</h5>
             </MenuButton>
             <MenuButton root={MenuItem.root()
                 .setRuntimeChildrenProcedure(parent =>

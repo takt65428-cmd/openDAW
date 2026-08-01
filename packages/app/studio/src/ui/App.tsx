@@ -1,4 +1,5 @@
-import {isDefined, Terminator} from "@opendaw/lib-std"
+// TAKT-FORK: `isDefined` wurde nur vom entfernten Favicon-Umschalter gebraucht.
+import {Terminator} from "@opendaw/lib-std"
 import {createElement, Frag, Router} from "@opendaw/lib-jsx"
 import {WorkspacePage} from "@/ui/workspace/WorkspacePage.tsx"
 import {StudioService} from "@/service/StudioService.ts"
@@ -29,11 +30,10 @@ import {OpenAudioPage} from "@/takt/OpenAudioPage"
 
 export const App = (service: StudioService) => {
     const terminator = new Terminator()
-    const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
-    if (isDefined(favicon)) {
-        terminator.own(service.roomAwareness.catchupAndSubscribe(owner =>
-            favicon.href = isDefined(owner.getValue()) ? "/favicon-live.svg" : "/favicon.svg"))
-    }
+    // TAKT-FORK: Der Umschalter auf das „Live"-Symbol ist entfernt. Er zeigte an, dass ein
+    // Mitarbeitsraum laeuft — die Raumfunktion braucht den Server des Originals und ist hier
+    // nicht in Gebrauch. Er haette bei jedem Start das Takt-Logo aus index.html gegen das
+    // openDAW-Symbol getauscht, also genau das Branding rueckgaengig gemacht.
     return (
         <Frag>
             <RoomStatus lifecycle={terminator} service={service}/>
