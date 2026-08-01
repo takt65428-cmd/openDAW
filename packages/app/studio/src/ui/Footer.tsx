@@ -8,7 +8,7 @@ import {Runtime} from "@opendaw/lib-runtime"
 import {FooterLabel} from "@/service/FooterLabel"
 import {ProjectMeta, StudioPreferences} from "@opendaw/studio-core"
 import {Colors} from "@opendaw/studio-enums"
-import {UserCounter} from "@/UserCounter"
+// TAKT-FORK: `UserCounter` ist entfernt — siehe die Fussnote weiter unten.
 import {AudioData} from "@opendaw/lib-dsp"
 import {FooterItem} from "@/ui/FooterItem"
 import {EngineAddresses} from "@opendaw/studio-adapters"
@@ -178,11 +178,10 @@ export const Footer = ({lifecycle, service}: Construct) => {
                          }
                      }, "debug", "footer-show-build-infos"))
                  }}/>
-            <FooterItem title="Users"
-                        onInit={({value}) => {
-                            const counter = new UserCounter("https://api.opendaw.studio/users/user-counter.php")
-                            counter.subscribe(count => value.textContent = String(count))
-                        }}>#</FooterItem>
+            {/* TAKT-FORK: Die Anzeige „Users #" ist entfernt. Sie fragte api.opendaw.studio in
+                einem festen Takt nach der Zahl gleichzeitiger Nutzer — beim Messen kamen zehn
+                Abrufe je Sitzung zusammen. Sie zaehlt die Nutzer der ORIGINAL-Seite, nicht
+                unsere; hier haette sie also nie etwas Richtiges angezeigt. */}
             <div style={{display: "contents"}}
                  onInit={element => service.registerFooter((): FooterLabel => {
                      let titleRef!: HTMLElement

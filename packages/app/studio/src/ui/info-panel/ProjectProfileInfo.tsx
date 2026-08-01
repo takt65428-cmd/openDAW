@@ -1,20 +1,13 @@
 import css from "./ProjectInfo.sass?inline"
-import {
-    DefaultObservableValue,
-    isDefined,
-    isUndefined,
-    Lifecycle,
-    MutableObservableOption,
-    RuntimeNotifier
-} from "@opendaw/lib-std"
-import {createElement, Inject} from "@opendaw/lib-jsx"
+// TAKT-FORK: Mit dem Publish-Bereich sind auch dessen Imports entfallen
+// (DefaultObservableValue, isDefined, isUndefined, RuntimeNotifier, Inject, Button, Colors,
+// PublishMusic, Promises). Sie stehenzulassen waere toter Ballast, den der naechste Leser
+// fuer eine Absicht haelt.
+import {Lifecycle, MutableObservableOption} from "@opendaw/lib-std"
+import {createElement} from "@opendaw/lib-jsx"
 import {StudioService} from "@/service/StudioService.ts"
 import {Cover} from "./Cover"
 import {Events, Html} from "@opendaw/lib-dom"
-import {Button} from "@/ui/components/Button"
-import {Colors} from "@opendaw/studio-enums"
-import {PublishMusic} from "@/ui/info-panel/PublishMusic"
-import {Promises} from "@opendaw/lib-runtime"
 import {installScrollbars} from "@/ui/components/Scrollbars"
 
 const className = Html.adoptStyleSheet(css, "ProjectInfo")
@@ -49,35 +42,9 @@ export const ProjectProfileInfo = ({lifecycle, service}: Construct) => {
                   value={meta.description}/>
     )
     const coverModel = new MutableObservableOption<ArrayBuffer>(cover.unwrapOrUndefined())
-    const buttonPublishText = Inject.value(isDefined(meta.radioToken) ? "Republish" : "Publish")
-    const unpublishButton: HTMLElement = (
-        <Button lifecycle={lifecycle}
-                className={isDefined(meta.radioToken) ? undefined : "hidden"}
-                onClick={async () => {
-                    const approved = await RuntimeNotifier.approve({
-                        headline: "Unpublish Project?",
-                        message: "You can publish later again."
-                    })
-                    if (!approved) {return}
-                    const {status, error} = await Promises.tryCatch(PublishMusic.deleteMusic(meta.radioToken ?? ""))
-                    if (status === "rejected") {
-                        return await RuntimeNotifier.info({
-                            headline: "Could not unpublish",
-                            message: String(error)
-                        })
-                    }
-                    unpublishButton.classList.toggle("hidden", true)
-                    buttonPublishText.value = "Republish"
-                    delete meta.radioToken
-                    await Promises.tryCatch(profile.save())
-                    return await RuntimeNotifier.info({
-                        headline: "Project unpublished",
-                        message: ""
-                    })
-                }}>
-            Delete
-        </Button>
-    )
+    // TAKT-FORK: `buttonPublishText` und `unpublishButton` sind mit dem Publish-Bereich unten
+    // entfallen. `meta.radioToken` bleibt im Datenmodell — ein Projekt aus dem Original koennte
+    // ihn tragen, und ihn hier zu loeschen waere ein Eingriff in fremde Daten.
     const form: HTMLElement = (
         <div className="form">
             <div className="label">Name</div>
@@ -90,68 +57,12 @@ export const ProjectProfileInfo = ({lifecycle, service}: Construct) => {
             <label info="Maximum 512 characters">{inputDescription}</label>
             <div className="label">Cover</div>
             <Cover lifecycle={lifecycle} model={coverModel}/>
-            <div className="experimental-section" style={{display: "contents"}}>
-                <div className="label"/>
-                <div style={{display: "flex", flexDirection: "column", rowGap: "1em"}}>
-                    <div>
-                        Publish your music to <a href="https://music.opendaw.studio"
-                                                 style={{color: Colors.purple}}
-                                                 target="music.opendaw.studio">our music
-                        page</a>
-                    </div>
-                    <div style={{display: "flex", columnGap: "1em"}}>
-                        <Button lifecycle={lifecycle}
-                                onClick={async () => {
-                                    // Save current input values before dialog steals focus
-                                    profile.updateMetaData("name", inputName.value)
-                                    profile.updateMetaData("artist", inputArtist.value)
-                                    profile.updateMetaData("tags", inputTags.value.split(",").map(x => x.trim()))
-                                    profile.updateMetaData("description", inputDescription.value)
-                                    const approved = await RuntimeNotifier.approve({
-                                        headline: "Publish Your Music",
-                                        message: `Ensure all samples, soundfonts, and images are cleared of copyright.
-                                    Publishing makes your entire track visible to everyone.
-                                    Prepare proper metadata and upload a cover before starting.
-                                    
-                                    You are responsible for all content you share.
-                                    
-                                    All music is then published under CC BY-NC-SA 4.0`
-                                    })
-                                    if (!approved) {return}
-                                    const saveResult = await Promises.tryCatch(profile.save())
-                                    if (saveResult.status === "rejected") {
-                                        return RuntimeNotifier.info({
-                                            headline: "Problem",
-                                            message: String(saveResult.error)
-                                        })
-                                    }
-                                    const progressValue = new DefaultObservableValue(0.0)
-                                    const dialog = RuntimeNotifier.progress({
-                                        headline: "Publishing Music",
-                                        progress: progressValue
-                                    })
-                                    const {status, error} = await Promises.tryCatch(PublishMusic
-                                        .publishMusic(profile,
-                                            progress => progressValue.setValue(progress),
-                                            message => dialog.message = message))
-                                    dialog.terminate()
-                                    if (status === "rejected") {
-                                        return await RuntimeNotifier.info({
-                                            headline: "Could not publish",
-                                            message: String(error)
-                                        })
-                                    }
-                                    unpublishButton.classList.toggle("hidden", isUndefined(meta.radioToken))
-                                    buttonPublishText.value = isDefined(meta.radioToken) ? "Republish" : "Publish"
-                                    RuntimeNotifier.notify({message: "Publish complete", icon: "Checkbox"})
-                                }}
-                                appearance={{framed: true, color: Colors.purple}}>
-                            {buttonPublishText}
-                        </Button>
-                        {unpublishButton}
-                    </div>
-                </div>
-            </div>
+            {/* TAKT-FORK: Der Bereich „Publish your music to our music page" ist entfernt.
+                Er lud das FERTIGE PROJEKT samt aller Samples auf music.opendaw.studio hoch —
+                also die Aufnahmen des Nutzers auf einen fremden Server, unter CC BY-NC-SA 4.0.
+                Das ist mit dem Versprechen von Artist OS nicht vereinbar, und die Netzsperre
+                haette den Knopf ohnehin ins Leere laufen lassen. Ein Knopf, der nichts tut,
+                ist schlechter als keiner. */}
         </div>
     )
     lifecycle.ownAll(

@@ -18,7 +18,9 @@ import {
     GlobalSoundfontLoaderManager,
     Workers
 } from "@opendaw/studio-core"
-import {OpenPresetAPI, OpenSampleAPI, OpenSoundfontAPI} from "@/opendaw-api"
+// TAKT-FORK: `OpenPresetAPI` ist mit dem leeren Katalog entfallen. Die beiden anderen bleiben —
+// sie holen unten einzelne Dateien nach UUID, nicht die Listen.
+import {OpenSampleAPI, OpenSoundfontAPI} from "@/opendaw-api"
 import {testFeatures} from "@/features.ts"
 import {MissingFeature} from "@/ui/MissingFeature.tsx"
 import {UpdateMessage} from "@/ui/UpdateMessage.tsx"
@@ -26,8 +28,10 @@ import {showStoragePersistDialog} from "@/AppDialogs"
 import {Promises} from "@opendaw/lib-runtime"
 import {AnimationFrame, Browser, Html, ShortcutManager} from "@opendaw/lib-dom"
 import {AudioOutputDevice} from "@/audio/AudioOutputDevice"
-import {installLatencyReporter} from "@/LatencyReporter"
-import {reportVisitor} from "@/VisitorReporter"
+// TAKT-FORK: `installLatencyReporter` und `reportVisitor` sind entfernt. Beide melden
+// unaufgefordert an api.opendaw.studio — Audio-Latenz und jeden Besuch. Die Netzsperre hielt
+// sie zwar ab, aber sie liefen weiter; und Besucher zu zaehlen gehoert nicht in eine App, die
+// verspricht, nichts nach draussen zu geben.
 import {FontLoader} from "@/ui/FontLoader"
 import {ErrorHandler} from "@/errors/ErrorHandler.ts"
 import {AudioData} from "@opendaw/lib-dsp"
@@ -71,8 +75,6 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
     const context = new AudioContext({sampleRate, latencyHint: 0})
     console.debug(`AudioContext state: ${context.state}, sampleRate: ${context.sampleRate}`)
     console.debug(`Error.stackTraceLimit: ${Error.stackTraceLimit ?? "N/A"}`)
-    installLatencyReporter(context)
-    reportVisitor()
     const audioWorklets = await Promises.tryCatch(AudioWorklets.createFor(context))
     if (audioWorklets.status === "rejected") {
         return panic(audioWorklets.error)
@@ -98,10 +100,20 @@ export const boot = async ({workersUrl, workletsUrl, wasmProcessorUrl, wasmOffli
                 console.debug(`AudioContext resumed (${context.state})`)), {capture: true, once: true})
     }
     const audioDevices = await AudioOutputDevice.create(context)
+    // TAKT-FORK: Die drei Fremdkataloge sind leer statt von opendaw.studio geholt.
+    //
+    // Sie waren nach dem Ausbau der Zaehler die einzigen verbliebenen Rufe nach draussen: beim
+    // Booten vier Abrufe des Preset-Index und einer der Soundfont-Liste — je Seitenaufruf, ohne
+    // Zutun des Nutzers. Die Netzsperre wies sie ab, die Panels blieben also ohnehin leer; jetzt
+    // wird gar nicht erst gefragt.
+    //
+    // ⚖️ Bewusst NUR die LISTEN. Die `Chained…Provider` weiter unten holen einzelne Dateien
+    // nach UUID und haben lokale Quellen davor — sie anzufassen wuerde auch den Zugriff auf
+    // Eigenes kappen. Eigene Samples kommen ueber den Import aus Artist OS und liegen lokal.
     FactoryCatalog.install({
-        samples: () => OpenSampleAPI.get().all(),
-        soundfonts: () => OpenSoundfontAPI.get().all(),
-        presets: () => OpenPresetAPI.get().list()
+        samples: async () => [],
+        soundfonts: async () => [],
+        presets: async () => []
     })
     const chainedSampleProvider = new ChainedSampleProvider({
         fetch: async (uuid: UUID.Bytes, progress: Progress.Handler): Promise<[AudioData, SampleMetaData]> =>

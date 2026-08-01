@@ -86,9 +86,16 @@ export class PresetService {
 
     constructor(readonly service: StudioService) {
         PresetStorage.readIndex().catch(reason => console.warn("PresetStorage.readIndex failed", reason))
-        this.#cloudReady = OpenPresetAPI.get().list().then(
-            value => {this.#cloudIndex.setValue(value)},
-            reason => {console.warn("OpenPresetAPI.list failed", reason)})
+        // TAKT-FORK: Kein Abruf des Preset-Index von assets.opendaw.studio.
+        //
+        // ⚠️ Diese Stelle geht am `FactoryCatalog` in boot.ts VORBEI — der Index wurde hier im
+        // Konstruktor ein zweites Mal geholt. Nach dem Leeren des Katalogs war das der einzige
+        // verbliebene Ruf nach draussen; ohne das Nachmessen in der Konsole waere er
+        // uebersehen worden.
+        //
+        // Die EIGENEN Presets des Nutzers (`userIndex` → `PresetStorage`) sind unberuehrt —
+        // nur die fremde Wolke bleibt leer. `#cloudIndex` steht bereits auf [].
+        this.#cloudReady = Promise.resolve()
     }
 
     get project(): Project {return this.service.project}
