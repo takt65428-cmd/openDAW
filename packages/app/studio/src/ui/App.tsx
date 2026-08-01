@@ -17,7 +17,7 @@ import {ImprintPage} from "@/ui/pages/ImprintPage.tsx"
 import {GraphPage} from "@/ui/pages/GraphPage"
 import {CodeEditorPage} from "@/ui/pages/CodeEditorPage"
 import {OpenBundlePage} from "@/ui/pages/OpenBundlePage"
-import {DashboardPage} from "@/ui/pages/stats/DashboardPage"
+// TAKT-FORK: `DashboardPage` ist mit den Routen /stats und /users entfallen.
 import {PrivacyPage} from "@/ui/pages/PrivacyPage"
 import {PreferencesPage} from "@/ui/pages/PreferencesPage"
 import {TestPage} from "@/ui/pages/TestPage"
@@ -62,13 +62,8 @@ export const App = (service: StudioService) => {
                     {path: "/upload", factory: SampleUploadPage},
                     {path: "/colors", factory: ColorsPage},
                     {path: "/graph", factory: GraphPage},
-                    {path: "/stats", factory: DashboardPage},
-                    {
-                        path: "/users", factory: (context) => {
-                            history.replaceState(null, "", "/stats")
-                            return DashboardPage(context)
-                        }
-                    },
+                    // TAKT-FORK: /stats und /users sind entfernt — die Statistik-Seite zeigt
+                    // Besucher-, Raum- und Nutzungszahlen der ORIGINAL-Seite.
                     {path: "/open-bundle/*", factory: OpenBundlePage},
                     // TAKT-FORK: Einstieg aus Artist OS. Die Parameter stehen in der QUERY, nicht
                     // im Pfad — sie enthalten vollstaendige URLs mit eigenen Query-Teilen, die in

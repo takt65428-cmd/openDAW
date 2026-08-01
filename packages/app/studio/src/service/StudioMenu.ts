@@ -3,14 +3,15 @@ import {Browser, Files} from "@opendaw/lib-dom"
 import {RouteLocation} from "@opendaw/lib-jsx"
 import {Promises} from "@opendaw/lib-runtime"
 import {Colors, IconSymbol} from "@opendaw/studio-enums"
-import {CloudBackup, FilePickerAcceptTypes, MenuItem} from "@opendaw/studio-core"
+// TAKT-FORK: `CloudBackup` ist mit dem Backup-Menue entfallen.
+import {FilePickerAcceptTypes, MenuItem} from "@opendaw/studio-core"
 import {StudioService} from "@/service/StudioService"
 import {GlobalShortcuts} from "@/ui/shortcuts/GlobalShortcuts"
 import {VideoRenderer} from "@/video/VideoRenderer"
 import {createDebugMenu} from "@/service/DebugMenu"
 import {connectRoom} from "@/service/StudioLiveRoomConnect"
 // TAKT-FORK: `AiDemux` ist mit dem Menueeintrag entfallen.
-import {NextcloudDialogs} from "@/project/NextcloudDialogs"
+// TAKT-FORK: `NextcloudDialogs` ist mit dem Nextcloud-Menue entfallen.
 
 export const populateStudioMenu = (service: StudioService) => {
     const Global = GlobalShortcuts
@@ -103,39 +104,16 @@ export const populateStudioMenu = (service: StudioService) => {
                         shortcut: GlobalShortcuts["toggle-software-keyboard"].shortcut.format(),
                         checked: service.isSoftwareKeyboardVisible()
                     }).setTriggerProcedure(() => service.toggleSoftwareKeyboard()),
-                    MenuItem.default({
-                        label: "Backup",
-                        icon: IconSymbol.CloudFolder,
-                        separatorBefore: true
-                    }).setRuntimeChildrenProcedure(parent => {
-                        parent.addMenuItem(
-                            MenuItem.default({
-                                label: "Dropbox",
-                                icon: IconSymbol.Dropbox
-                            }).setTriggerProcedure(() =>
-                                CloudBackup.backup(service.cloudAuthManager, "Dropbox").catch(EmptyExec)),
-                            MenuItem.default({
-                                label: "GoogleDrive",
-                                icon: IconSymbol.GoogleDrive
-                            }).setTriggerProcedure(() =>
-                                CloudBackup.backup(service.cloudAuthManager, "GoogleDrive").catch(EmptyExec)),
-                            MenuItem.default({label: "Help", icon: IconSymbol.Help, separatorBefore: true})
-                                .setTriggerProcedure(() => RouteLocation.get().navigateTo("/manuals/cloud-backup"))
-                        )
-                    }),
-                    MenuItem.default({
-                        label: "Nextcloud",
-                        icon: IconSymbol.Nextcloud
-                    }).setRuntimeChildrenProcedure(parent => {
-                        parent.addMenuItem(
-                            MenuItem.default({label: "Browse projects..."})
-                                .setTriggerProcedure(() => NextcloudDialogs.browse(service)),
-                            MenuItem.default({label: "Upload project...", selectable: service.hasProfile})
-                                .setTriggerProcedure(() => NextcloudDialogs.save(service)),
-                            MenuItem.default({label: "Help", icon: IconSymbol.Help, separatorBefore: true})
-                                .setTriggerProcedure(() => RouteLocation.get().navigateTo("/manuals/nextcloud"))
-                        )
-                    }),
+                    // TAKT-FORK: „Backup" (Dropbox, GoogleDrive) und „Nextcloud" sind entfernt.
+                    //
+                    // Alle drei fuehren ins Leere: Dropbox und Google Drive melden sich ueber
+                    // fremde OAuth-Kennungen an, die dem Original gehoeren — die Netzsperre
+                    // weist die Anmeldung ab, und selbst wenn nicht, laege das Projekt danach
+                    // bei einem Dritten. Fuer Nextcloud gibt es keinen Server.
+                    //
+                    // ⚖️ Die Sicherung liegt hier ohnehin woanders: die Aufnahmen kommen aus
+                    // Artist OS und liegen dort auf dem Server. Das Studio ist die Werkbank,
+                    // nicht das Lager.
                     MenuItem.default({
                         label: "Script Editor",
                         separatorBefore: true,
@@ -147,10 +125,10 @@ export const populateStudioMenu = (service: StudioService) => {
                         separatorBefore: true,
                         icon: IconSymbol.System
                     }).setTriggerProcedure(() => RouteLocation.get().navigateTo("/preferences")),
-                    MenuItem.default({
-                        label: "Statistics",
-                        icon: IconSymbol.Charts
-                    }).setTriggerProcedure(() => RouteLocation.get().navigateTo("/stats")),
+                    // TAKT-FORK: „Statistics" ist entfernt. Die Seite zeigt Besucher-, Raum- und
+                    // Nutzungszahlen der ORIGINAL-Seite (api.opendaw.studio/users/*.json,
+                    // rooms/*.json) — hier haette sie nie etwas Richtiges angezeigt, und die
+                    // Zaehler dahinter sind ohnehin ausgebaut.
                     createDebugMenu(service)
                 )
             }
