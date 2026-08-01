@@ -198,8 +198,17 @@ export const Footer = ({lifecycle, service}: Construct) => {
                      } satisfies FooterLabel
                  })}/>
             <div style={{flex: "1"}}/>
+            {/* TAKT-FORK: Deutsche Beschriftung plus der Quelltext-Link.
+                ⚠️ Der Quelltext-Link ist bei der AGPL v3 keine Hoeflichkeit, sondern Pflicht:
+                wer eine veraenderte Fassung ueber ein Netz anbietet, muss ihren Nutzern den
+                Quelltext dieser Fassung zugaenglich machen (§13). Ein Verweis auf das Original
+                genuegt dafuer NICHT — es muss unsere Fassung sein. */}
             <div style={{color: Colors.cream.toString()}}>
-                <LocalLink href="/privacy">Privacy</LocalLink> · <LocalLink href="/imprint">Imprint</LocalLink>
+                <LocalLink href="/privacy">Datenschutz</LocalLink> · <LocalLink
+                href="/imprint">Impressum</LocalLink> · <a
+                href="https://github.com/takt65428-cmd/openDAW"
+                target="_blank"
+                style={{color: "inherit"}}>Quelltext</a>
             </div>
         </footer>
     )
