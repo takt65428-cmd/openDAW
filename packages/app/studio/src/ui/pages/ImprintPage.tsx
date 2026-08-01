@@ -49,7 +49,8 @@ export const ImprintPage: PageFactory<StudioService> = ({lifecycle}: PageContext
                                                   href="https://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL v3</a>.
             Takt Studios hat diese Fassung verändert; der vollständige Quelltext liegt
             unter <a style={{color: Colors.blue}}
-                    href="https://github.com/takt65428-cmd/openDAW">github.com/takt65428-cmd/openDAW</a>.
+                    href="https://github.com/takt65428-cmd/openDAW/tree/takt">github.com/takt65428-cmd/openDAW</a>
+            (Zweig <span style={{color: Colors.cream.toString()}}>takt</span>).
             Für die Änderungen und für den Betrieb dieser Seite ist Takt Studios verantwortlich,
             nicht der ursprüngliche Autor.
         </p>

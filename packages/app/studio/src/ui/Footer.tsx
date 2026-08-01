@@ -206,7 +206,10 @@ export const Footer = ({lifecycle, service}: Construct) => {
             <div style={{color: Colors.cream.toString()}}>
                 <LocalLink href="/privacy">Datenschutz</LocalLink> · <LocalLink
                 href="/imprint">Impressum</LocalLink> · <a
-                href="https://github.com/takt65428-cmd/openDAW"
+                // ⚠️ MIT Zweig-Angabe. Ohne „/tree/takt" zeigt GitHub den Standardzweig `main`,
+                // und dort liegt der UNVERAENDERTE Originalcode. Die AGPL verlangt aber den
+                // Quelltext DIESER Fassung — ein Link auf das Original erfuellt sie nicht.
+                href="https://github.com/takt65428-cmd/openDAW/tree/takt"
                 target="_blank"
                 style={{color: "inherit"}}>Quelltext</a>
             </div>
